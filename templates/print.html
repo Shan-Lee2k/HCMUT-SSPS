@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+
+{% block head %}
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>HCMUT_SSPS</title>
+    </head>
+{% endblock %}
+
+{% block content %}
+    {% if current_stage == 'print_document' %} 
+        <div class="content-section">
+            <form class="form-group" action="{{ url_for('print_document') }}" method="POST" enctype="multipart/form-data">
+                <label for="file">Select File to Upload:</label>
+                <input type="file" name="file" id="file" accept=".pdf, .docx, .txt" required />
+                <button type="submit">Upload Document</button>
+            </form>
+        </div>
+    {% elif current_stage == 'upload_success' %}
+        <div class="content-section">
+            <p>Uploaded successfully:</p>
+            <ul>
+                <li>Paper Size: A4</li>
+                <li>Number of Pages: 10</li>
+                <li>One Side/Two Sides: One Side</li>
+                <li>Number of Copies: 1</li>
+            </ul>
+            <!-- link to move to printer_selection -->
+            <a href="{{ url_for('move_to_printer_selection') }}" class="btn btn-primary">Next</a>
+        </div>
+    {% elif current_stage == 'printer_selection' %}
+        <div class="content-section">
+            <p>Select a printer:</p>
+            <form action="{{ url_for('printer_selection') }}" method="POST"> <!-- Update to 'printer_selection' -->
+                <select name="printer">
+                    <option value="printer1">Printer 1</option>
+                    <option value="printer2">Printer 2</option>
+                </select>
+                <button type="submit">Print</button>
+            </form>
+        </div>
+    {% elif current_stage == 'printing' %}
+        <div class="content-section">
+            <h2>Printing</h2>
+            <p>Your document is being printed. Please wait...</p>
+        </div>
+    {% endif %}
+{% endblock %}
