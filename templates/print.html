@@ -1,25 +1,23 @@
 {% extends "layout.html" %}
-
-{% block head %}
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>HCMUT_SSPS</title>
-    </head>
-{% endblock %}
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <ul class="flashes">
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endwith %}
 
 {% block content %}
-    {% if current_stage == 'print_document' %} 
-        <div class="content-section">
-            <form class="form-group" action="{{ url_for('print_document') }}" method="POST" enctype="multipart/form-data">
+    <div class="content-section">
+        {% if current_stage == 'print_document' %} 
+            <form class="form-group" method="post" enctype="multipart/form-data" action="{{ url_for('print_document') }}">
                 <label for="file">Select File to Upload:</label>
                 <input type="file" name="file" id="file" accept=".pdf, .docx, .txt" required />
                 <button type="submit">Upload Document</button>
             </form>
-        </div>
-    {% elif current_stage == 'upload_success' %}
-        <div class="content-section">
+        {% elif current_stage == 'upload_success' %}
             <p>Uploaded successfully:</p>
             <ul>
                 <li>Paper Size: A4</li>
@@ -27,24 +25,35 @@
                 <li>One Side/Two Sides: One Side</li>
                 <li>Number of Copies: 1</li>
             </ul>
-            <!-- link to move to printer_selection -->
-            <a href="{{ url_for('move_to_printer_selection') }}" class="btn btn-primary">Next</a>
-        </div>
-    {% elif current_stage == 'printer_selection' %}
-        <div class="content-section">
+            {% if warning %}
+                <p>Warning: You have exceeded the limit of free pages.</p>
+                <a href="{{ url_for('buy_more_pages') }}" class="btn btn-warning">Buy More Pages</a>
+            {% else %}
+                <a href="{{ url_for('move_to_next_stage') }}" class="btn btn-primary">Next</a>
+            {% endif %}
+        {% elif current_stage == 'printer_selection' %}
             <p>Select a printer:</p>
-            <form action="{{ url_for('printer_selection') }}" method="POST"> <!-- Update to 'printer_selection' -->
+            <form action="{{ url_for('printer_selection') }}" method="POST">
                 <select name="printer">
                     <option value="printer1">Printer 1</option>
                     <option value="printer2">Printer 2</option>
                 </select>
                 <button type="submit">Print</button>
             </form>
-        </div>
-    {% elif current_stage == 'printing' %}
-        <div class="content-section">
+        {% elif current_stage == 'printing' %}
             <h2>Printing</h2>
             <p>Your document is being printed. Please wait...</p>
-        </div>
-    {% endif %}
+        {% elif current_stage == 'file_not_allowed' %}
+            <h2>File Not Allowed</h2>
+            <p>The selected file type is not allowed. Please choose a file with one of the following extensions: 
+                <strong>.docx</strong>, <strong>.txt</strong>, <strong>.pdf</strong>.
+            </p>
+            <a href="{{ url_for('move_to_previous_stage') }}" class="btn btn-primary">Go Back</a>
+        {% elif current_stage == 'print_document_warning' %}
+            <h2>Warning: Exceeded Free Pages Limit</h2>
+            <p>You have exceeded the limit of free pages for {{ file_extension|upper }} files. Please upgrade your account to continue printing.</p>
+            <a href="{{ url_for('home') }}" class="btn btn-primary">Home</a>
+        {% endif %}
+    </div>
 {% endblock %}
+    
