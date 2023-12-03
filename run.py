@@ -46,6 +46,18 @@ class Document(db.Model):
     def __repr__(self):
         return f"Document({self.filename})"
 
+class Printer(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    brand_name = db.Column(db.String(20), nullable=False)
+    print_model = db.Column(db.String(20), nullable=False)
+    location = db.Column(db.String(20), nullable=False)
+
+    def __init__(self, brand_name, print_model,location):
+        self.brand_name = brand_name
+        self.print_model = print_model
+        self.location = location
+    def __repr__(self):
+        return f"Brand_name:({self.brand_name}), Model:({self.print_model})"
 @app.route('/', methods=["GET", "POST"])
 def init():
     if request.method == "POST":
