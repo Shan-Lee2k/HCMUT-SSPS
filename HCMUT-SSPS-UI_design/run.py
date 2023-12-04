@@ -5,6 +5,8 @@ from werkzeug.utils import secure_filename
 from werkzeug.datastructures import  FileStorage
 from form import RegistrationForm, LoginForm
 from flask import jsonify
+from flask_bcrypt import Bcrypt
+from flask_login import LoginManager, UserMixin, login_user
 
 app = Flask(__name__) #name is special variable
 # Config app
@@ -14,6 +16,12 @@ app.config["MAX_CONTENT_PATH"] = 100
 
 # Create an instance database
 db = SQLAlchemy(app)
+bcrypt = Bcrypt(app)
+login_manager  = LoginManager(app)
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.filter_by(id = user_id).all()
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
