@@ -23,6 +23,7 @@ login_manager  = LoginManager(app)
 def load_user(user_id):
     return User.query.filter_by(id = user_id).all()
 
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
@@ -105,7 +106,7 @@ def login():
         with app.app_context():
             user = User.query.filter_by(email = form.email.data).first()
             if user and bcrypt.check_password_hash(user.password, form.password.data):
-                login_user(user, remember=form.remember.data)    
+                #login_user(user, remember=form.remember.data)    
                 if "user_type" in session:
                     user_type = session.get('user_type')
                     if user_type == 'user':
