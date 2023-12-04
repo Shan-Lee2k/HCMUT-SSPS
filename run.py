@@ -1,11 +1,12 @@
 from datetime import datetime
 from flask import Flask, render_template, flash, redirect, url_for, request,session
 from flask_sqlalchemy import SQLAlchemy
-from flask_bcrypt import Bcrypt
-from flask_login import LoginManager, UserMixin, login_user
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import  FileStorage
 from form import RegistrationForm, LoginForm
+from flask import jsonify
+from flask_bcrypt import Bcrypt
+from flask_login import LoginManager, UserMixin, login_user
 
 app = Flask(__name__) #name is special variable
 # Config app
@@ -54,18 +55,25 @@ class Document(db.Model):
     def __repr__(self):
         return f"Document({self.filename})"
 
-class Printer(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    brand_name = db.Column(db.String(20), nullable=False)
-    print_model = db.Column(db.String(20), nullable=False)
-    location = db.Column(db.String(20), nullable=False)
 
-    def __init__(self, brand_name, print_model,location):
+class Printer(db.Model):
+   
+    brand_name = db.Column(db.String(20), nullable=False, primary_key=True)
+    is_on = db.Column(db.Boolean, default=False)
+    location = db.Column(db.String(20), nullable=False)
+    notes = db.Column(db.String(20), nullable=False)
+    print_model = db.Column(db.String(20), nullable=False)
+    def __init__(self, brand_name, print_model, is_on, location, notes):
         self.brand_name = brand_name
         self.print_model = print_model
         self.location = location
+        self.is_on = is_on
+        self.notes = notes
+
     def __repr__(self):
         return f"Brand_name:({self.brand_name}), Model:({self.print_model})"
+
+
 @app.route('/', methods=["GET", "POST"])
 def init():
     if request.method == "POST":
@@ -124,6 +132,66 @@ def logout():
     return redirect(url_for("init"))
 
 
+
+
+
+###spso
+@app.route('/printer_management', methods = ['GET', 'POST'])
+def printer_management():
+    printers = Printer.query.all()
+
+    return render_template('printer_management.html', printers=printers)
+    
+@app.route('/configuration', methods = ['GET', 'POST'])
+def configuration():
+    return render_template("configuration.html")
+
+@app.route('/reports', methods = ['GET', 'POST'])
+def reports():
+    return render_template("reports.html")
+
+###### 
+@app.route('/update_status/<int:printer_id>', methods=['POST'])
+def update_status(printer_id):
+    printer = Printer.query.get_or_404(printer_id)
+    new_status = request.json.get('is_on', False)
+    printer.is_on = new_status
+    db.session.commit()
+    return jsonify({'message': 'Status updated successfully'})
+
+@app.route('/update_notes/<int:printer_id>', methods=['POST'])
+def update_notes(printer_id):
+    printer = Printer.query.get_or_404(printer_id)
+    new_notes = request.json.get('notes', '')
+    printer.notes = new_notes
+    db.session.commit()
+    return jsonify({'message': 'Notes updated successfully'})
+
+
+
+# Create a route to save the printer information
+@app.route('/add_printer', methods=['POST'])
+def save_printer():
+    brand_name = request.form.get('brand_name')
+    print_model = request.form.get('print_model')
+    is_on = bool(request.form.get('is_on'))
+    location = request.form.get('location')
+    notes = request.form.get('notes')
+
+    # Create a Printer instance
+    printer = Printer(brand_name=brand_name, print_model=print_model, is_on=is_on, location=location, notes=notes)
+
+    # Add the Printer instance to the session
+    db.session.add(printer)
+
+    # Commit the changes to the database
+    db.session.commit()
+
+    return render_template("configuration.html")
+
+
+
+######
 with app.app_context():
     db.create_all()
 if __name__ == '__main__':

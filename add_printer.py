@@ -19,12 +19,12 @@ printer_list = [["TOSHIBA","E-studio 656","CS1.H1"],
 
 def add_Printer(printer_list):
     for printer in printer_list:
-        new_printer = Printer(brand_name=printer[0], print_model=printer[1],location=printer[2]) 
+        new_printer = Printer(brand_name=printer[0],is_on=True, location=printer[2],notes="None",print_model=printer[1]) 
         with app.app_context():
             db.session.add(new_printer) 
             db.session.commit()
             
-#add_Printer(printer_list)
+add_Printer(printer_list)
 
 # Query all:
 with app.app_context():
