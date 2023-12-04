@@ -6,7 +6,20 @@ from werkzeug.datastructures import  FileStorage
 from form import RegistrationForm, LoginForm
 from flask import jsonify
 from flask_bcrypt import Bcrypt
-from flask_login import LoginManager, UserMixin, login_user
+from flask import Flask, request
+from flask_login import LoginManager, UserMixin, login_user  
+from flask_login import login_required
+import os
+import fitz
+import docx
+import txt
+
+# Define current_stage globally
+current_stage = 'print_document'
+# Define stage_history as a global variable
+stage_history = []
+# Initialize uploaded_file globally
+uploaded_file = None
 
 app = Flask(__name__) #name is special variable
 # Config app
@@ -21,7 +34,7 @@ login_manager  = LoginManager(app)
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.filter_by(id = user_id).all()
+    return User.query.get(int(user_id))
 
 class User(db.Model,UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -73,6 +86,16 @@ class Printer(db.Model):
     def __repr__(self):
         return f"Brand_name:({self.brand_name}), Model:({self.print_model})"
 
+class PrintedDocument(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    document_name = db.Column(db.String(100), nullable=False)
+    pages_printed = db.Column(db.Integer, nullable=False)
+    date_printed = db.Column(db.DateTime, nullable=False, default=datetime.utcnow())
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    def __repr__(self):
+        return f"PrintedDocument('{self.document_name}', '{self.pages_printed}', '{self.date_printed}')"
+
 
 @app.route('/', methods=["GET", "POST"])
 def init():
@@ -117,13 +140,6 @@ def login():
     return render_template('login.html', form=form)
 
 
-@app.route('/print', methods = ['GET', 'POST'])
-def print():
-    if request.method == 'POST':
-      f = request.files['file']
-      f.save(secure_filename(f.filename))
-      return 'file uploaded successfully'
-    render_template('print.html')
     
 # Log out
 @app.route('/logout')
@@ -131,8 +147,207 @@ def logout():
     session.pop("user_type",None)
     return redirect(url_for("init"))
 
+## Print logic 
+
+ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt'}
+FREE_PAGES_LIMIT = 10
+
+# Define the function to check if the file has an allowed extension
+
+def is_valid_file(file_content):
+    file_extension = os.path.splitext(file_content.filename)[1]
+    valid_extensions = ('.pdf', '.txt', '.docx')
+    return file_extension in valid_extensions
 
 
+#Function to find number of pages
+def get_number_of_pages(file_path):
+    if file_path.lower().endswith('.pdf'):
+        with fitz.open(file_path) as doc:
+            return doc.page_count
+    elif file_path.lower().endswith('.docx'):
+        with docx.Document(file_path) as doc:
+            return sum(1 for _ in doc.paragraphs)
+    elif file_path.lower().endswith('.txt'):
+        with open(file_path, 'r', encoding='utf-8') as file:
+            return len(file.readlines())
+    else:
+        return 0
+
+def is_file_pages_valid(file_path):
+    try:
+        number_of_pages = get_number_of_pages(file_path)
+        return isinstance(number_of_pages, int) and number_of_pages > 0
+    except Exception as e:
+        print(f"Error validating page count: {e}")
+        return False
+
+
+def get_pdf_or_txt_page_count(file_path):
+    # Reusing existing logic from get_number_of_pages
+    return get_number_of_pages(file_path)
+
+def get_docx_page_count(file_path):
+    # Reusing existing logic from get_number_of_pages
+    return get_number_of_pages(file_path)
+
+@app.route('/buy_more_pages_action', methods=['POST'])
+@login_required
+def buy_more_pages_action():
+    flash("You have bought more pages!", 'success')
+    return redirect(url_for('print_document'))
+
+def is_valid_file(file_content):
+    try:
+        mime_type, _ = mimetypes.guess_type(None, file_content)
+        return mime_type in {'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'}
+    except Exception as e:
+        print(f"Error checking file type: {e}")
+        return False
+
+
+@app.route('/print_document', methods=['GET', 'POST'])
+@login_required
+def print_document():
+    global current_stage, stage_history, uploaded_file, warning, file_extension
+
+    # Reset warning and file_extension variables
+    warning = False
+    file_extension = ""
+
+    if request.method == 'POST':
+        if 'file' in request.files:
+            uploaded_file = request.files['file']
+
+            if uploaded_file:
+                try:
+                    # Read the file content
+                    file_content = uploaded_file.read()
+
+                    # Check if the file content is valid
+                    if not file_content or not is_valid_file(file_content):
+                        current_stage = 'file_not_allowed'
+                        flash("Error: Invalid file content. Please choose a valid file.", 'danger')
+                    else:
+                        # Continue with your processing logic
+                        number_of_pages, is_valid = get_number_of_pages(file_content)
+
+                        print(f"Number of pages: {number_of_pages}")
+
+                        if not is_valid:
+                            current_stage = 'file_not_allowed'
+                            flash(f"Error: Invalid file content. Please choose a valid file.", 'danger')
+                        else:
+                            # Store information about the printed document in the database
+                            printed_document = PrintedDocument(
+                                document_name=uploaded_file.filename,
+                                pages_printed=number_of_pages,
+                                content=file_content,  # Store file content in the database
+                                user=current_user
+                            )
+
+                            db.session.add(printed_document)
+                            db.session.commit()
+
+                            # Check if the number of pages is within the free limit
+                            if number_of_pages <= FREE_PAGES_LIMIT:
+                                stage_history.append(current_stage)
+                                current_stage = 'upload_success'
+                            else:
+                                # Check file type for specific warning messages
+                                if file_extension == '.pdf':
+                                    warning = True
+                                    flash("Warning: You have exceeded the limit of free pages for PDF files.", 'warning')
+                                elif file_extension == '.txt':
+                                    warning = True
+                                    flash("Warning: You have exceeded the limit of free pages for TXT files.", 'warning')
+                                else:
+                                    flash(f"Warning: You have exceeded the limit of free pages for {file_extension} files.", 'warning')
+
+                            # Redirect to the appropriate stage
+                            return redirect(url_for(current_stage))
+                except Exception as e:
+                    current_stage = 'file_not_allowed'
+                    flash(f"Error: An unexpected error occurred while processing the file. Details: {str(e)}", 'danger')
+                    print(f"Unexpected error: {e}")
+            else:
+                current_stage = 'file_not_allowed'
+                flash(f"Error: Invalid file.", 'danger')
+
+    return render_template('print.html', current_stage=current_stage, show_buy_button=False, uploaded_file=uploaded_file, warning=warning, file_extension=file_extension)
+
+# ...
+
+
+@app.route('/printer_selection', methods=['GET', 'POST'])
+def printer_selection():
+    available_printers = []  # Replace with your logic to get available printers
+
+    if not available_printers:
+        # Redirect to the notification page if no printers are available
+        flash("No printers available. Please connect a printer and try again.", 'danger')
+        return render_template('no_printer_available.html')
+
+    if request.method == 'POST':
+        selected_printer = request.form.get('printer')
+
+        if selected_printer in available_printers:
+            # Move to the next stage
+            global current_stage
+            current_stage = 'printing'  # Update to 'printing' or your next stage
+            return render_template('print.html', current_stage=current_stage, selected_printer=selected_printer)
+        else:
+            # Display a notification if the selected printer is not available
+            flash("Selected printer is not available. Please choose a different printer.", 'danger')
+
+    # Display available printers
+    return render_template('printer_selection.html', available_printers=available_printers)
+    
+
+def determine_next_stage(current_stage):
+    # Find the index of the current stage in the history
+    current_stage_index = stage_history.index(current_stage) if current_stage in stage_history else -1
+
+    if current_stage_index > 0:
+        # If the current stage is not the first one in the history,
+        # return the stage right behind it
+        return stage_history[current_stage_index - 1]
+    else:
+        # If the current stage is the first one or not found in history,
+        # return 'print_document' as the default next stage
+        return 'print_document'
+
+@app.route('/move_to_next_stage', methods=['GET'])
+def move_to_next_stage():
+    global current_stage, stage_history
+
+    # Call the determine_next_stage function to get the next stage
+    next_stage = determine_next_stage(current_stage)
+
+    # Add the current stage to the history
+    stage_history.append(current_stage)
+
+    # Update the current stage to the next stage
+    current_stage = next_stage
+
+    # Redirect to the determined next stage
+    return redirect(url_for(current_stage))
+
+
+@app.route('/move_to_previous_stage', methods=['GET'])
+def move_to_previous_stage():
+    global current_stage, stage_history
+    if len(stage_history) > 1:
+        # Remove the current stage from history
+        stage_history.pop()
+        # Get the previous stage from history
+        current_stage = stage_history[-1]
+    else:
+        # Handle the case where there is no previous stage
+        current_stage = 'print_document'
+
+    # Redirect to the previous or default stage
+    return redirect(url_for(current_stage))
 
 
 ###spso
