@@ -1,6 +1,8 @@
 from datetime import datetime
 from flask import Flask, render_template, flash, redirect, url_for, request,session
 from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import Bcrypt
+from flask_login import LoginManager, UserMixin, login_user
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import  FileStorage
 from form import RegistrationForm, LoginForm
@@ -13,8 +15,14 @@ app.config["MAX_CONTENT_PATH"] = 100
 
 # Create an instance database
 db = SQLAlchemy(app)
+bcrypt = Bcrypt(app)
+login_manager  = LoginManager(app)
 
-class User(db.Model):
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.filter_by(id = user_id).all()
+
+class User(db.Model,UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -86,16 +94,19 @@ def home():
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        flash("You have been logged in", 'success')
-        if "user_type" in session:
-            user_type = session.get('user_type')
-            if user_type == 'user':
-                return render_template("user_dashboard.html")  
-            elif user_type == 'spso':
-                return render_template("spso_dashboard.html")  
-    else:
-        #flash("Login unsuccessfully! Please check email and password again!")
-        return render_template('login.html', form=form)
+        with app.app_context():
+            user = User.query.filter_by(email = form.email.data).first()
+            if user and bcrypt.check_password_hash(user.password, form.password.data):
+                login_user(user, remember=form.remember.data)    
+                if "user_type" in session:
+                    user_type = session.get('user_type')
+                    if user_type == 'user':
+                        return render_template("user_dashboard.html")  
+                    elif user_type == 'spso':
+                        return render_template("spso_dashboard.html")  
+            else:
+                flash('Login Unsuccessful. Please check email and password', 'danger')
+    return render_template('login.html', form=form)
 
 
 @app.route('/print', methods = ['GET', 'POST'])
