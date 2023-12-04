@@ -1,3 +1,7 @@
+<<<<<<<< HEAD:templates/layout.html
+========
+
+>>>>>>>> UPDATE_code:HCMUT-SSPS-UI_design/templates/spso_dashboard.html
 <!DOCTYPE html>
 <html>
 <head>
@@ -10,19 +14,35 @@
 
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='main.css') }}">
 
+<<<<<<<< HEAD:templates/layout.html
     <title>{% block title %}{% endblock %}</title>
     
+========
+    {% if title %}
+        <title>HCMUT_SPSS - {{ title }}</title>
+    {% else %}
+        <title>HCMUT_SPSS</title>
+    {% endif %}
+>>>>>>>> UPDATE_code:HCMUT-SSPS-UI_design/templates/spso_dashboard.html
 </head>
 <body>
     <header class="site-header">
       <nav class="navbar navbar-expand-md navbar-dark bg-steel fixed-top">
         <div class="container">
+<<<<<<<< HEAD:templates/layout.html
           <a class="navbar-brand mr-4" href="/">HCMUT_SPSS</a>
+========
+          
+          <a class="navbar-brand mr-4" href="/home">
+         <img src="https://hcmut.edu.vn/img/nhanDienThuongHieu/01_logobachkhoatoi.png" alt="logo">
+        </a>
+>>>>>>>> UPDATE_code:HCMUT-SSPS-UI_design/templates/spso_dashboard.html
           <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarToggle" aria-controls="navbarToggle" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
           </button>
           <div class="collapse navbar-collapse" id="navbarToggle">
             <div class="navbar-nav mr-auto">
+<<<<<<<< HEAD:templates/layout.html
               {% block leftbar %}
               {% endblock %}
             </div>
@@ -30,6 +50,19 @@
             <div class="navbar-nav">
               {% block rightbar %}
               {% endblock %}
+========
+  
+                <a class="nav-item nav-link" href="{{ url_for('home') }}">Home</a>
+                <a class="nav-item nav-link" href="{{ url_for('printer_management') }}">Manage Printer</a>
+                <a class="nav-item nav-link" href="{{ url_for('configuration') }}">Manage Configuration</a>
+                <a class="nav-item nav-link" href="#">Reports</a>
+                
+            </div>
+            <!-- Navbar Right Side -->
+            <div class="navbar-nav">
+                <a class="nav-item nav-link" href="#">Info</a>
+                <a class="nav-item nav-link" href="{{ url_for('logout') }}">Log out</a>
+>>>>>>>> UPDATE_code:HCMUT-SSPS-UI_design/templates/spso_dashboard.html
             </div>
           </div>
         </div>
@@ -49,7 +82,12 @@
           {% endwith %}
           {% block content %}{% endblock %}
         </div>
+<<<<<<<< HEAD:templates/layout.html
       
+========
+
+      </div>
+>>>>>>>> UPDATE_code:HCMUT-SSPS-UI_design/templates/spso_dashboard.html
     </main>
 
 
@@ -59,4 +97,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
 </body>
+<<<<<<<< HEAD:templates/layout.html
 </html>
+========
+</html>
+
+
+>>>>>>>> UPDATE_code:HCMUT-SSPS-UI_design/templates/spso_dashboard.html
